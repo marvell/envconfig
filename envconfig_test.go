@@ -11,7 +11,7 @@ type TestConfig struct {
 	BoolVar bool     `env:"BOOL_VAR" default:"true" usage:"BoolVar usage"`
 }
 
-func TestMain(t *testing.T) {
+func TestParse(t *testing.T) {
 	cfg := &TestConfig{}
 	Parse(cfg)
 

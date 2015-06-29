@@ -1,7 +1,9 @@
 package envconfig
 
 import (
+	"fmt"
 	"os"
+	"path"
 	"reflect"
 	"strconv"
 	"strings"
@@ -54,4 +56,25 @@ func Parse(cfg interface{}) {
 			}
 		}
 	}
+}
+
+func Usage(cfg interface{}) {
+	fmt.Printf("USAGE: [options] %s\n", path.Base(os.Args[0]))
+	fmt.Printf("OPTIONS:\n")
+
+	t := reflect.TypeOf(cfg).Elem()
+	for i := 0; i < t.NumField(); i++ {
+		ft := t.Field(i)
+
+		e := ft.Tag.Get("env")
+		if e == "" {
+			e = strings.ToUpper(ft.Name)
+		}
+		d := ft.Tag.Get("default")
+		u := ft.Tag.Get("usage")
+
+		fmt.Printf("\t%s [%v] %s\n", e, d, u)
+	}
+
+	fmt.Printf("EXAMPLE:\n\tVAR1=VALUE1 %s", path.Base(os.Args[0]))
 }
