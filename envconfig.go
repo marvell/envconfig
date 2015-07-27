@@ -9,8 +9,10 @@ import (
 	"strings"
 )
 
-const CONFIG_VALUES_DELIMITER = ","
+// char for split values
+const ConfigValuesDelimiter = ","
 
+// Parse fill config values from env-variables
 func Parse(cfg interface{}) {
 	v := reflect.ValueOf(cfg).Elem()
 	t := reflect.TypeOf(cfg).Elem()
@@ -19,45 +21,61 @@ func Parse(cfg interface{}) {
 		fv := v.Field(i)
 		ft := t.Field(i)
 
-		val := ft.Tag.Get("default")
-
-		envKey := ft.Tag.Get("env")
-		if envKey == "" {
-			envKey = strings.ToUpper(ft.Name)
+		if fv.CanSet() == false {
+			break
 		}
+
+		envKey := getEnvKey(ft)
+
+		val := ft.Tag.Get("default")
 		if envValue := os.Getenv(envKey); envValue != "" {
 			val = envValue
 		}
 
 		if val != "" {
-			if fv.CanSet() {
-				switch fv.Kind() {
-				case reflect.Slice:
-					vals := strings.Split(val, CONFIG_VALUES_DELIMITER)
-					for _, v := range vals {
-						fv.Set(reflect.Append(fv, reflect.ValueOf(v)))
-					}
-				case reflect.Bool:
-					var b bool
-					if val == "true" || val == "1" {
-						b = true
-					}
-					fv.SetBool(b)
-				case reflect.String:
-					fv.SetString(val)
-				case reflect.Int:
-					valInt, err := strconv.Atoi(val)
-					if err != nil {
-						panic(err)
-					}
-
-					fv.SetInt(int64(valInt))
+			switch fv.Kind() {
+			case reflect.Slice:
+				for _, v2 := range parseStringSlice(val) {
+					fv.Set(reflect.Append(fv, reflect.ValueOf(v2)))
 				}
+			case reflect.Bool:
+				fv.SetBool(parseBool(val))
+			case reflect.String:
+				fv.SetString(val)
+			case reflect.Int:
+				fv.SetInt(parseInt(val))
 			}
 		}
 	}
 }
 
+func getEnvKey(ft reflect.StructField) string {
+	envKey := ft.Tag.Get("env")
+	if envKey == "" {
+		envKey = strings.ToUpper(ft.Name)
+	}
+
+	return envKey
+}
+
+func parseBool(val string) bool {
+	return val == "true" || val == "1"
+}
+
+func parseInt(val string) int64 {
+	valInt, err := strconv.Atoi(val)
+	if err != nil {
+		panic(err)
+	}
+
+	return int64(valInt)
+}
+
+func parseStringSlice(val string) []string {
+	return strings.Split(val, ConfigValuesDelimiter)
+}
+
+// Usage print help information
 func Usage(cfg interface{}) {
 	fmt.Printf("USAGE: [options] %s\n", path.Base(os.Args[0]))
 	fmt.Printf("OPTIONS:\n")
